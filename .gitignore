@@ -1,0 +1,3 @@
+*.txt
+/client_secrets.json
+.idea
