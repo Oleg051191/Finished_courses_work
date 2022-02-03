@@ -5,21 +5,16 @@ import time
 from tqdm import tqdm
 import pandas as pd
 import json
+import settings
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 gauth = GoogleAuth()
 gauth.LocalWebserverAuth()
 
-path = os.path.join(os.getcwd(), 'TOKEN_VK.txt')
-with open(path, 'r') as file:
-    token = file.read()
-
-path1 = os.path.join(os.getcwd())
-
 class VKUser:
     url = 'https://api.vk.com/method/'
-    def __init__(self, token, version):
-        self.params = {'access_token': token,
+    def __init__(self, TOKEN_VK, version):
+        self.params = {'access_token': TOKEN_VK,
                        'v': version
                        }
 
@@ -78,10 +73,8 @@ class VKUser:
 
     def _get_headers_yandex(self):
         """Служебная функция, передающая заголовки в другие функции для отправки запросов на Яндекс-Полигон"""
-        with open('Yandex_token.txt', encoding='utf-8-sig') as file:
-            token  = file.read()
         return {'Content_type': 'applications/json',
-                'Authorization': 'OAuth {}'.format(token)}
+                'Authorization': settings.YANDEX_TOKEN}
 
 
     def _create_dir(self, dir_name):
@@ -220,19 +213,16 @@ class VKUser:
             all_name_photo.append(f"{photo['likes']['count']}.jpg")
         return f"All photos was downloads in directory with name '{dir_name}'"
 
-vk_client = VKUser(token, 5.131)
+vk_client = VKUser(settings.TOKEN_VK, 5.131)
 
                                     #### РАБОТА С ИНСТАГРАММ ######
-
-with open('Marker_inst.txt', encoding='utf-8-sig') as file:
-    token = file.read()
 
 class Inst:
     def user_info(self, version, user_id):
         """Метод, получающий общую информацию о странице пользователя Инстаграмм"""
         url = 'https://graph.instagram.com/' + f"{version}/" + f"{user_id}"
         params = {'fields': 'account_type,id,media_count,username',
-                  'access_token': token}
+                  'access_token': settings.MARKER_INST}
         response = requests.get(url, params=params).json()
         return response
 
@@ -240,7 +230,7 @@ class Inst:
         """Служебный метод, получающая все id фотографий из инстаграмм пользователя"""
         url = 'https://graph.instagram.com/me/media'
         params = {'fields': 'account_type,id,media_count,username',
-                  'access_token': token}
+                  'access_token': settings.MARKER_INST}
         response = requests.get(url, params=params).json()
         all_id_media = response['data']
         all_id = []
@@ -254,7 +244,7 @@ class Inst:
         all_id_media = self._user_media_id()
         url = 'https://graph.instagram.com/'
         params = {'fields': 'id, media_url',
-                  'access_token': token}
+                  'access_token': settings.MARKER_INST}
         all_photos_url = {}
         for info in all_id_media:
             full_url = url + info
@@ -279,7 +269,7 @@ class Inst:
 
     def _create_folder(self, dir_name):
         """Служебный метод, создающий папку на GOOGLE-диске для последующей загрузки медиа-файлов"""
-        headers = {'Authorization': 'Bearer ya29.A0ARrdaM9QX1dNBvwrca_24ipbmIS1JVebzPj06OtJMeEmd_HtmbviX6CEvw18MJe8feGdHVCH0OiGvWOLt18K-xO4rQSe2N5tQ4-TLGWXpCJQHQm1T7klCplr2d0CU6WI6BHnYOM7nBEvx1LqdDvyPvu2tImW'}
+        headers = {'Authorization': settings.GOOGLE_TOKEN}
         url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'
         metadata = {'name': dir_name,
                     'mimeType': 'application/vnd.google-apps.folder'}
@@ -290,8 +280,9 @@ class Inst:
 
     def download_to_google(self, dir_name):
         """Метод, загружающий все фото пользователя инстаграмм в отдельную директории на гугл-диске. В качестве
-        параметров передается имя директории на гугл-диске куда произойдет загрука медиа-файлов"""
-        headers = {'Authorization': 'Bearer ya29.A0ARrdaM9QX1dNBvwrca_24ipbmIS1JVebzPj06OtJMeEmd_HtmbviX6CEvw18MJe8feGdHVCH0OiGvWOLt18K-xO4rQSe2N5tQ4-TLGWXpCJQHQm1T7klCplr2d0CU6WI6BHnYOM7nBEvx1LqdDvyPvu2tImW'}
+        параметров передается имя директории на гугл-диске куда произойдет загрука медиа-файлов
+        !!!!!!!!!!!!!!!!!!!!ТОКЕН ДЕЙСТВИТЕЛЕН ОДИН ЧАС С МОМЕНТА СОЗДАНИЯ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""
+        headers = {'Authorization': settings.GOOGLE_TOKEN}
         url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'
         self.download_all_photo_from_inst_to_dir()
         all_path = os.getcwd()
@@ -321,9 +312,10 @@ inst_user = Inst()
 if __name__ == '__main__':
     pprint(inst_user.user_info('v11.0', 4873701356030303))
     inst_user.download_all_photo_from_inst_to_dir()
-    print(inst_user.create_files_on_Google())
     vk_client.download_to_yandex('begemot_korovin', 'VK photos')
     pprint(vk_client.get_followers_info('davidich1981', 'Followers_100.xlsx'))
     pprint(vk_client.download_all_photos_in_yandex('gchivchyan', 'Photo from all albums VK'))
     pprint(vk_client.get_json_file('begemot_korovin', 'Photo_info'))
     pprint(inst_user.download_to_google('Inst photo'))
+    print(inst_user.create_files_on_Google())
+
